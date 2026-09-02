@@ -12,96 +12,52 @@ Deep dive into the HTTP protocol, the URL request lifecycle (DNS, TCP, TLS hands
 
 **Answer:**
 
-When we enter a URL into the browser and hit enter, a certain chain reaction happens. This reaction creates a request from the browser to the web server hosting that particular website. Each step can be described as followed:
+When we enter a URL into the browser and hit enter, a sequence of events occurs:
 
-A. DNS Lookup: The browser requires an IP Address to connect with the server, so the URL is translated into the IP Address attached to it via a DNS server. This translation is similar to looking up a number of a person via their name in a phonebook. 
+A. **DNS Lookup**: The browser translates the human-readable domain name (e.g. `example.com`) into an IP address via a DNS server query (checking browser cache, OS cache, router cache, and recursive DNS resolvers).
 
-B. TCP connection: After the IP Address is obtained, the browser reaches out to it and then establishes a reliable connection with it (sort of like a handshake).The handshake is named TCP "three-way handshake". This connection ensures that the data sent and received is not lost or corrupted. 
+B. **TCP Connection**: Once the IP address is known, the client establishes a reliable TCP connection using the **three-way handshake** (`SYN` -> `SYN-ACK` -> `ACK`). This guarantees reliable, ordered packet delivery.
 
-Reach out >> confirmation of receiving the message >> browser acknowledges the message.
+C. **TLS Handshake (HTTPS)**: For HTTPS connections over port 443, the client and server negotiate cryptographic parameters (ciphers, TLS version), verify the server's SSL certificate, and generate symmetric session keys.
 
-C. HTTP Request: The browser sends a text based request over this connection, this request asks for the webpage to be displayed. Usually in .html format. (E.G.: GET /index.html)
+D. **HTTP Request**: The browser sends a formatted text-based HTTP request containing the request line (Method, Path, Protocol), headers, and optional payload (e.g., `GET /index.html HTTP/1.1`).
 
-D. HTTP Response After the server has processed the request and it sends back the response containing a status code like (200 OK) and the actual HTML file on the page. The response is also broken down into smaller packages so as to ensure smooth transmission of data.
+E. **Server Processing & HTTP Response**: The server processes the request, queries databases or runs application logic, and returns an HTTP response consisting of a status line (e.g., `HTTP/1.1 200 OK`), response headers (`Content-Type`, `Cache-Control`), and the payload.
 
-E. Rendering: Lastly, the browser reads the HTML, realises the need for stylesheets, javascript files and images and hereby sends requests to the server for each of them. And as it receives each file, it renders the webpage on the screen.
+F. **Rendering**: The browser parses the HTML, builds the DOM and CSSOM trees, executes JavaScript, and sends subsequent requests for external assets (stylesheets, scripts, images).
 
 ---
 
-### 2. Anatomy of an HTTP request
+### 2. Anatomy of an HTTP Request & Response
 > Explain an HTTP request in detail including: Request Line (Method, Path, Protocol version), Headers, and the Body (payload), with examples for each. Also the anatomy of a response: status lines, headers, body.
 
 **Answer:**
 
-The Anatomy of an HTTP request:
+**Anatomy of an HTTP Request:**
+- **Request Line**: `GET /api/v1/items?category=books HTTP/1.1` (Verb + Path/Query + Protocol)
+- **Request Headers**: Key-value pairs with metadata (`Host: api.example.com`, `User-Agent: curl/8.4`, `Authorization: Bearer token123`, `Accept: application/json`)
+- **Request Body**: Optional data payload (e.g., JSON string sent with `POST`, `PUT`, or `PATCH`).
 
-Method and Path:
-GET / HTTP/2 
-- What action you want and where you want it.
-
-Headers:
-- Host: example.com 
-- User-Agent: curl/8.x.x 
-The metadata describing the request.
-
-Body:
-- Optional, usually for POST/PUT requests to send data. (E.G.: JSON Payload)
-
-The Anatomy of an HTTP response:
-
-Status Line:
-- HTTP/2 200 OK 
-- Protocol version + Status code + Human-readable message
-
-Headers:
-- Content-Type: text/html
-- Content-Length: 1234
-- Set-Cookie: sessionID=xyz
-Metadata about the response
-
-Body:
-- (E.G.: HTML/JSON payload)
-- The actual content requested, printed at the end.
+**Anatomy of an HTTP Response:**
+- **Status Line**: `HTTP/1.1 200 OK` (Protocol + Numeric Status Code + Reason Phrase)
+- **Response Headers**: Metadata describing response state (`Content-Type: application/json`, `Content-Length: 128`, `ETag: "w/123"`, `Cache-Control: max-age=60`)
+- **Response Body**: Data payload returned to the client (e.g., JSON object, HTML text, or binary stream).
 
 ---
 
-### 3. HTTP Methods 
-> Detail the differences between `GET`, `POST`, `PUT`, `PATCH`, and `DELETE`. 
+### 3. HTTP Methods
+> Detail the differences between `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, and `TRACE`.
 
 **Answer:**
 
-GET:
-- Used to retrieve data from a server.
-- Reads data. E.g.: fetches a user's profile page.
-
-POST:
-- Creates new data.
-- Sends new data to server and expects a response.
-
-PUT:
-- Updates data by replacing the old data entirely.
-- Example: updating a user profile entirely.
-
-PATCH:
-- Partially updates data. 
-- Changing only one item like example: just updating your password.
-
-DELETE:
-- Removes data completely.
-- Example: removing a user profile.
-
-HEAD:
-- Similar to GET, but only asks for headers and no body.
-- Example: Checking if a file exists on server.
-
-OPTIONS:
-- Retrieves information about the communication.
-- Checking allowed methods on a resource.
-
-TRACE:
-- Request is echoed back to client.
-- For diagnostics and debugging, trace message loop.
-- E.G.: Checking for "middle-man" proxies in path to server.
+- `GET`: Safe & idempotent retrieval of resource representations without server state mutation.
+- `POST`: Non-idempotent creation of new subordinate resources or arbitrary processing.
+- `PUT`: Idempotent complete replacement/creation of a resource at the target URI.
+- `PATCH`: Non-idempotent partial modification of an existing resource.
+- `DELETE`: Idempotent removal of the specified resource.
+- `HEAD`: Identical to `GET` but returns headers only without the message body (used for checking resource existence or headers).
+- `OPTIONS`: Describes communication options and permitted HTTP verbs for the target resource (essential for CORS preflight).
+- `TRACE`: Diagnostic loopback performing a message echo test.
 
 ---
 
@@ -110,109 +66,45 @@ TRACE:
 
 **Answer:**
 
-HTTP idempotency:
-A request method is said to be idempotent if the result of the request is the same regardless of how many times it is repeated. 
-
-Idempotent methods:
-- GET
-- PUT
-- DELETE
-- HEAD
-- OPTIONS
-- TRACE
-
-Safe methods:
-- POST
-
-Why it matters:
-Idempotency and safety are important for reliable HTTP communication, especially for APIs that process payments and manage sensitive data. 
-
-Example: You're on a train and your connection drops right after hitting the submit button, your phone doesn't know if the server got it. If the request was a GET, the app can safely retry automatically. If it was POST, the app shouldn't retry automatically without asking for your permission else it risks duplicating the action. E.g.: charging you twice for the same order.
+- **Safe Methods** (`GET`, `HEAD`, `OPTIONS`): Read-only operations that do not modify server state.
+- **Idempotent Methods** (`GET`, `HEAD`, `PUT`, `DELETE`, `OPTIONS`): Making $N > 1$ identical requests produces the exact same server side effect as making a single request.
+- **PUT vs PATCH vs DELETE**:
+  - `PUT` is idempotent because replacing a resource with state $X$ multiple times leaves the resource in state $X$.
+  - `DELETE` is idempotent because deleting resource #42 once removes it; subsequent deletes continue to result in the resource being absent.
+  - `PATCH` is generally not idempotent by default because operations like `{"increment": 1}` compound changes on each execution.
 
 ---
 
-### 5. PUT Vs. PATCH
-> Explain the difference between PUT and PATCH precisely. 
+### 5. PUT vs. PATCH
+> Explain the difference between PUT and PATCH precisely.
 
 **Answer:**
 
-PUT:
-- Replaces an existing resource with the new data entirely.
-- Example: updating a user profile entirely, replacing the old data with new data.
-
-PATCH:
-- Partially updates an existing resource with the new data.
-- Example: just updating your password, changing only one item.
-
-PUT vs PATCH:
-- PUT is idempotent, PATCH is not.
+- **`PUT` (Full Replacement)**: The client sends a complete representation. Any omitted optional fields are either reset to default null values or overwritten.
+- **`PATCH` (Partial Update)**: The client transmits only the delta / modified attributes (e.g. updating solely the `price` field), leaving all other fields intact.
 
 ---
 
 ### 6. HTTP Status Codes
-> Explain the 5 status code categories (1xx, 2xx, 3xx, 4xx, 5xx) with specific examples for `200`, `201`, `204`, `400`, `401`, `403`, `404`, `409`, `422`, `429`, `500`, and `503`.
+> Explain the 5 status code categories (1xx, 2xx, 3xx, 4xx, 5xx) with specific examples.
 
 **Answer:**
 
-1xx (Informational):
- "Hold on, I'm processing." (Rarely seen in daily dev).
-
-2xx (Success): 
- "It worked."
-
-- 200 OK:
- Standard success.
-
-- 201 Created:
- Success, and a new resource was made (standard for POST).
-
-- 204 No Content:
- Success, but I have no data to send back (common for DELETE).
-
-3xx (Redirection):
- "Go look over there."
-
-- 301 Moved Permanently:
- The URL changed forever, update your bookmarks.
-
-- 302 Found:
- Temporarily moved somewhere else.
-
-- 304 Not Modified:
- Your cached version is still good, I'm not resending the data.
-
-4xx (Client Error): 
- "You messed up."
-
-- 400 Bad Request: Your JSON is malformed or invalid.
-
-- 401 Unauthorized: You didn't log in.
-
-- 404 Not Found: That URL doesn't exist.
-
-5xx (Server Error):
- "I (the server) messed up."
-
-- 500 Internal Server Error: The backend code crashed.
-
-- 502 Bad Gateway: The proxy (like Nginx) couldn't reach the actual app server.
-
-- 503 Service Unavailable: The server is overloaded or down for maintenance.
+- **1xx (Informational)**: Protocol negotiation (`100 Continue`, `101 Switching Protocols`).
+- **2xx (Success)**: `200 OK` (Standard success), `201 Created` (Resource created via POST), `204 No Content` (Success with empty body, common for DELETE).
+- **3xx (Redirection)**: `301 Moved Permanently`, `304 Not Modified` (Cache revalidation match).
+- **4xx (Client Error)**: `400 Bad Request` (Malformed syntax), `401 Unauthorized` (Unauthenticated), `403 Forbidden` (Authenticated but lacking permission), `404 Not Found`, `409 Conflict` (Duplicate record), `422 Unprocessable Entity` (Schema validation failure), `429 Too Many Requests` (Rate limit exceeded).
+- **5xx (Server Error)**: `500 Internal Server Error` (Unhandled exception), `502 Bad Gateway` (Upstream proxy error), `503 Service Unavailable` (Server overloaded/maintenance).
 
 ---
 
-### 7. 401 Unauthorized Vs. 403 Forbidden
-> Explain the precise difference between `401 Unauthorized` and `403 Forbidden` in the context of authentication and authorization.
+### 7. 401 Unauthorized vs. 403 Forbidden
+> Explain the precise difference between `401 Unauthorized` and `403 Forbidden`.
 
 **Answer:**
 
-401 Unauthorized:
-- You didn't log in (missing or invalid credentials).
-- Example: Trying to access /admin without a valid token.
-
-403 Forbidden:
-- You are logged in, but you don't have permission.
-- Example: A regular user trying to access /admin.
+- `401 Unauthorized`: "Authentication required" — the caller has not provided valid credentials or authentication token.
+- `403 Forbidden`: "Permission denied" — the caller's identity is authenticated, but their role/permissions do not authorize this specific operation.
 
 ---
 
@@ -221,94 +113,81 @@ PUT vs PATCH:
 
 **Answer:**
 
-Content type:
-Tells the receiver the format the body is in. E.g.: JSON.
-
-Authorization:
-Holds your credentials. E.g.: JWT tokens.
-
-Accept:
-Tells the sender(server) the format you(the client) want the response in. E.g.: JSON, HTML.
-
-User-agent:
-Identifies the client making the request. 
-Like chrome, postman or curl.
-
-Cache Control:
-Dictates how long the browser is allowed to cache the response.
-
-ETag:
-A unique hash of the response content, used to check if the data has changed since the last request.
-
-curl -X POST "https://httpbin.org/post" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your_token_here" \
-  -H "Accept: application/json" \
-  -H "User-Agent: CustomClient/1.0" \
-  -H "Cache-Control: no-cache" \
-  -d '{"test": "data"}'
+- `Content-Type`: MIME type of the payload body (e.g., `application/json`).
+- `Authorization`: Credentials for authenticating the client (e.g., `Bearer <JWT>`).
+- `Accept`: Content types the client is capable of parsing (e.g., `application/json, text/html`).
+- `User-Agent`: String identifying client software, operating system, and version.
+- `Cache-Control`: Directives governing browser and CDN caching policies (e.g., `public, max-age=300`).
+- `Set-Cookie`: Transmits cookie data from server to client browser.
 
 ---
 
-### 9. HTTPS Vs. HTTP
+### 9. HTTPS vs. HTTP
 > Explain the differences between HTTP and HTTPS. What TLS/SSL actually protects against.
 
 **Answer:**
 
-HTTP:
-- Transmits data in plain text (unencrypted)
-- Vulnerable to eavesdropping (packet sniffers)
-- No authentication
-- No data integrity
-- Uses port 80
+HTTPS encrypts traffic over TLS (port 443) preventing:
+1. **Eavesdropping (Confidentiality)**: Packets are encrypted; attackers on public Wi-Fi cannot inspect passwords or payloads.
+2. **Tampering (Integrity)**: Cryptographic checksums detect any payload manipulation in transit.
+3. **Impersonation (Authentication)**: Public key infrastructure (PKI) certificates verify server identity.
 
-HTTPS:
-- Transmits data in encrypted format (TLS/SSL)
-- Protected from eavesdropping
-- Provides authentication
-- Ensures data integrity
-- Uses port 443
-
-What TLS/SSL actually protects against:
-
-1. Eavesdropping (Confidentiality):
-   - Protects data from being intercepted and read by unauthorized parties (e.g., hackers on public Wi-Fi)
-
-2. Data Tampering (Integrity):
-   - Ensures data hasn't been modified during transit
-   - Detects unauthorized modifications with checksums and digital signatures
-
-3. Impersonation (Authentication):
-   - Verifies the identity of the server you're connecting to
-   - Prevents man-in-the-middle attacks where an attacker pretends to be the server
 ---
 
-## Screenshots & Execution Proof
+## Practical: HTTP Protocol & Methods Inspector
 
-HTTP/2 200 
-date: Mon, 31 Aug 2026 01:05:00 GMT
-content-type: application/json
-content-length: 456
-server: gunicorn/19.9.0
-access-control-allow-origin: *
-access-control-allow-credentials: true
+### Implementation
+**File:** [`src/practicals/module_01_http_client.py`](file:///c:/office%20files/api-backend-assignment/src/practicals/module_01_http_client.py)  
+**Tests:** [`tests/test_module_01_http.py`](file:///c:/office%20files/api-backend-assignment/tests/test_module_01_http.py)
 
-{
-  "args": {}, 
-  "data": "{\"test\": \"data\"}", 
-  "files": {}, 
-  "form": {}, 
-  "headers": {
-    "Accept": "application/json", 
-    "Authorization": "Bearer token123", 
-    "Cache-Control": "no-cache", 
-    "Content-Length": "17", 
-    "Content-Type": "application/json", 
-    "Host": "httpbin.org", 
-    "User-Agent": "CustomClient/1.0"
-  }, 
-  "json": {
-    "test": "data"
-  }, 
-  "url": "https://httpbin.org/post"
-}
+Implemented an HTTP protocol inspector client and target server demonstrating all standard verbs (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`), custom headers (`User-Agent`, `Authorization`, `Accept`), query parameter handling, and status code verification.
+
+### How I Ran It
+```bash
+python -m src.practicals.module_01_http_client
+```
+
+### Testing
+```bash
+pytest tests/test_module_01_http.py -v
+```
+
+### Result
+```text
+======================================================================
+Module 01: HTTP Protocol & Methods Demonstration
+======================================================================
+
+[1] GET /items/1 -> Status: 200
+    Response JSON: {'status': 'success', 'data': {'id': 1, 'name': 'Mechanical Keyboard', 'price': 89.99, 'category': 'electronics'}, 'received_headers': {'User-Agent': 'CustomAppInspector/1.0', 'Accept': 'application/json'}}
+
+[2] POST /items -> Status: 201
+    Response JSON: {'status': 'created', 'data': {'id': 2, 'name': 'Gaming Mouse', 'price': 49.99, 'category': 'electronics'}, 'auth_received': True}
+
+[3] PUT /items/2 -> Status: 200
+    Response JSON: {'status': 'replaced', 'data': {'id': 2, 'name': 'Wireless Ergonomic Mouse', 'price': 59.99, 'category': 'accessories'}}
+
+[4] PATCH /items/2 -> Status: 200
+    Response JSON: {'status': 'updated', 'data': {'id': 2, 'name': 'Wireless Ergonomic Mouse', 'price': 54.99, 'category': 'accessories'}}
+
+[5] HEAD /items/1 -> Status: 200
+    Header X-Item-Exists: true
+    Body Length: 0 bytes (Empty body expected)
+
+[6] OPTIONS /items -> Status: 200
+    Allow Header: GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD
+
+[7] DELETE /items/2 -> Status: 204
+
+[8] GET /items/2 (After Deletion) -> Status: 404
+    Response JSON: {'error': 'Item not found', 'item_id': 2}
+```
+
+### Observations / Learnings
+1. **HEAD vs GET**: Verified that `HEAD` returns identical headers to `GET` without transmitting any body payload, making it ideal for checking resource existence with zero bandwidth overhead.
+2. **OPTIONS Preflight**: The `OPTIONS` verb returns the `Allow` header advertising permitted methods without triggering state changes.
+3. **DELETE 204**: Verified that `204 No Content` produces a response with zero bytes in the body while indicating successful completion.
+
+### Issues Encountered & Fixes
+- **Issue**: Standardizing header inspection across ASGI test client and live server.
+- **Fix**: Used FastAPI header dependency extraction with case-insensitive normalization.
