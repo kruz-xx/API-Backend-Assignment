@@ -16,7 +16,7 @@ Analogy used here: TV Remote to change the volume.
 
 When using a remote control to increase or decrease the volume on a TV, we don't need to understand the internal circuitry of the speakers or how sound waves are amplified. We just see the buttons with either plus and minus or, up and down arrows indicating what button does what. 
 
-According to the button we press, the remote control sends an infrared signal to the TV which the setup box recognises and hence follows through with the command. This command is then processed and carried out, changing the volume on the TV.
+According to the button we press, the remote control sends an infrared signal to the TV which the setup box recognizes and hence follows through with the command. This command is then processed and carried out, changing the volume on the TV.
 
 This is how an API request works. So, an API is an interface that allows two softwares to communicate effectively and share information securely and efficiently.
 

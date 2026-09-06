@@ -38,6 +38,9 @@ async def place_order(
     processed_items: List[OrderItemDetail] = []
     total_amount = 0.0
 
+    # Pass 1: Atomic Validation & Pre-calculation
+    # Verify all items exist and have sufficient stock before mutating any database state
+    staging_deductions = []
     for item in order_in.items:
         product = products_db.get(item.product_id)
         if not product:
@@ -56,9 +59,7 @@ async def place_order(
 
         subtotal = round(product["price"] * item.quantity, 2)
         total_amount += subtotal
-
-        # Deduct inventory stock
-        product["stock"] -= item.quantity
+        staging_deductions.append((product, item.quantity))
 
         processed_items.append(
             OrderItemDetail(
@@ -68,6 +69,10 @@ async def place_order(
                 subtotal=subtotal
             )
         )
+
+    # Pass 2: State Mutation (All items guaranteed valid)
+    for product, qty in staging_deductions:
+        product["stock"] -= qty
 
     order_record = {
         "id": order_id_counter,

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -42,7 +42,10 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: int = Field(..., description="Unique user ID")
     is_active: bool = Field(default=True, description="Account active status")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Account creation timestamp")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Account creation timestamp"
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -79,7 +82,7 @@ class ProductUpdate(BaseModel):
 
 class ProductResponse(ProductBase):
     id: int = Field(..., description="Unique product ID")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -108,7 +111,7 @@ class OrderResponse(BaseModel):
     items: List[OrderItemDetail] = Field(..., description="Purchased items")
     total_amount: float = Field(..., description="Total order amount in USD")
     status: OrderStatus = Field(default=OrderStatus.PENDING)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = ConfigDict(from_attributes=True)
 

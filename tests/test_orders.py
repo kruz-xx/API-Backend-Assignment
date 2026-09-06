@@ -79,3 +79,27 @@ def test_order_bola_protection(client, customer_token, admin_token):
     assert response.status_code == 403
     data = response.json()
     assert data["error"]["code"] == "FORBIDDEN_RESOURCE"
+
+
+def test_order_atomic_inventory_rollback(client, customer_token):
+    """
+    Test atomic order placement: if item 2 fails stock check, item 1's stock must NOT be deducted.
+    """
+    from src.routers.products import products_db
+    initial_stock_p1 = products_db[1]["stock"]
+    initial_stock_p2 = products_db[2]["stock"]
+
+    headers = {"Authorization": f"Bearer {customer_token}"}
+    payload = {
+        "items": [
+            {"product_id": 1, "quantity": 1},      # Valid (stock available)
+            {"product_id": 2, "quantity": 999999}  # Invalid (exceeds stock)
+        ]
+    }
+    response = client.post("/api/v1/orders/", json=payload, headers=headers)
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INSUFFICIENT_STOCK"
+
+    # Verify inventory was NOT partially decremented
+    assert products_db[1]["stock"] == initial_stock_p1
+    assert products_db[2]["stock"] == initial_stock_p2
