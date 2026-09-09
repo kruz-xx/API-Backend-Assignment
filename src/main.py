@@ -1,5 +1,9 @@
+import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from src.config import settings
 from src.middlewares.error_handler import register_exception_handlers
 from src.routers.graphql_router import graphql_router
@@ -98,3 +102,21 @@ app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 app.include_router(products_router, prefix=settings.API_V1_PREFIX)
 app.include_router(orders_router, prefix=settings.API_V1_PREFIX)
 app.include_router(graphql_router, prefix="/graphql")
+
+# ---------------------------------------------------------------------------
+# Static Files & Web UI Console
+# ---------------------------------------------------------------------------
+STATIC_DIR = Path(__file__).parent / "static"
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/app", include_in_schema=False)
+    async def serve_ui():
+        """
+        Serves the clean developer UI console for Module 12 Capstone.
+        """
+        index_file = STATIC_DIR / "index.html"
+        return FileResponse(index_file)
+

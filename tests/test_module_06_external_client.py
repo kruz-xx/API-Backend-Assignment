@@ -34,9 +34,16 @@ def test_module_06_retry_backoff_and_recovery():
     assert slept_durations == [1.0, 2.0]
 
 
+try:
+    import httpx2
+    HTTP_ERRORS = (httpx.HTTPStatusError, httpx2.HTTPStatusError)
+except ImportError:
+    HTTP_ERRORS = (httpx.HTTPStatusError,)
+
+
 def test_module_06_non_retryable_failure_abort():
     client = ResilientExternalClient()
-    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+    with pytest.raises(HTTP_ERRORS) as exc_info:
         client.fetch_with_backoff("/unauthorized-endpoint", max_retries=3)
     assert exc_info.value.response.status_code == 401
 

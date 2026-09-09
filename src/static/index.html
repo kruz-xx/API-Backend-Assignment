@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Backend Assignment - Management Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Top Header Bar -->
+    <header class="top-header">
+      <div class="brand-section">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <h1 class="brand-title">E-Commerce API Console</h1>
+          <span class="brand-subtitle">Module 12 Capstone & Practical Backend Explorer</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Live Health Status Indicator -->
+        <div class="health-badge" id="health-indicator" title="Service health status">
+          <span class="status-dot"></span>
+          <span id="health-text">Checking API...</span>
+        </div>
+
+        <!-- User Persona Switcher -->
+        <div class="persona-switcher">
+          <span class="persona-label">Persona:</span>
+          <button class="btn-persona active" id="btn-persona-customer" onclick="switchPersona('customer')">Customer</button>
+          <button class="btn-persona" id="btn-persona-admin" onclick="switchPersona('admin')">Admin</button>
+          <button class="btn-persona" id="btn-custom-auth" onclick="openAuthModal()">Custom Login</button>
+        </div>
+
+        <!-- Active User Profile Chip -->
+        <div class="user-chip" id="user-chip">
+          <div class="user-avatar" id="user-avatar">C</div>
+          <div class="user-meta">
+            <span class="user-email" id="current-user-email">customer@example.com</span>
+            <span class="role-badge role-customer" id="current-user-role">CUSTOMER</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav class="sub-nav">
+      <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('catalog')" id="tab-btn-catalog">
+          <span>🛍️</span> Products Catalog
+        </button>
+        <button class="tab-btn" onclick="switchTab('cart')" id="tab-btn-cart">
+          <span>🛒</span> Cart & Checkout <span class="cart-count-badge" id="nav-cart-badge">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('orders')" id="tab-btn-orders">
+          <span>📦</span> Orders & BOLA Check
+        </button>
+        <button class="tab-btn" onclick="switchTab('admin')" id="tab-btn-admin">
+          <span>⚙️</span> Admin Inventory
+        </button>
+        <button class="tab-btn" onclick="switchTab('graphql')" id="tab-btn-graphql">
+          <span>⚡</span> GraphQL Studio
+        </button>
+        <button class="tab-btn" onclick="switchTab('docs')" id="tab-btn-docs">
+          <span>📖</span> API Docs & Health
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+      <!-- Toast Notification Container -->
+      <div id="toast-container" class="toast-container"></div>
+
+      <!-- TAB 1: PRODUCT CATALOG -->
+      <section id="tab-catalog" class="tab-pane active">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Product Catalog</h2>
+            <p class="section-desc">Browse in-memory products from <code>GET /api/v1/products/</code> with search and category filtering.</p>
+          </div>
+          <div class="filter-controls">
+            <input type="text" id="catalog-search" class="input-field" placeholder="Search by name or keyword..." oninput="renderCatalog()">
+            <select id="catalog-category-filter" class="select-field" onchange="loadProducts()">
+              <option value="">All Categories</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Audio">Audio</option>
+              <option value="Accessories">Accessories</option>
+            </select>
+            <button class="btn btn-secondary" onclick="loadProducts()">Refresh</button>
+          </div>
+        </div>
+
+        <div id="catalog-grid" class="catalog-grid">
+          <!-- Dynamically populated products -->
+          <div class="loading-state">Loading products...</div>
+        </div>
+      </section>
+
+      <!-- TAB 2: CART & ATOMIC CHECKOUT -->
+      <section id="tab-cart" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Shopping Cart & Atomic Checkout</h2>
+            <p class="section-desc">Submit orders via <code>POST /api/v1/orders/</code>. Performs atomic inventory verification and stock deduction.</p>
+          </div>
+          <button class="btn btn-secondary" onclick="clearCart()">Clear Cart</button>
+        </div>
+
+        <div class="cart-layout">
+          <div class="cart-items-panel">
+            <div id="cart-empty-message" class="empty-state" style="display: none;">
+              <p>Your shopping cart is empty.</p>
+              <button class="btn btn-primary" onclick="switchTab('catalog')">Browse Catalog</button>
+            </div>
+            <div class="table-container" id="cart-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Unit Price</th>
+                    <th>Quantity</th>
+                    <th>Subtotal</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="cart-items-tbody">
+                  <!-- Populated via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="cart-summary-panel">
+            <h3 class="panel-title">Order Summary</h3>
+            <div class="summary-row">
+              <span>Items Total:</span>
+              <span id="summary-items-count">0 items</span>
+            </div>
+            <div class="summary-row">
+              <span>Authentication:</span>
+              <span class="auth-status-text" id="summary-auth-user">customer@example.com</span>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-row total-row">
+              <span>Grand Total:</span>
+              <span class="total-amount" id="summary-grand-total">$0.00</span>
+            </div>
+            <button class="btn btn-primary btn-block" id="btn-checkout" onclick="performCheckout()">
+              Confirm & Place Order
+            </button>
+            <p class="summary-note">🔒 Order is signed with active JWT token.</p>
+          </div>
+        </div>
+
+        <!-- Order Result Receipt Box -->
+        <div id="checkout-receipt" class="receipt-box" style="display: none;">
+          <h4 class="receipt-title">✅ Order Placed Successfully!</h4>
+          <pre id="receipt-json" class="code-block"></pre>
+        </div>
+      </section>
+
+      <!-- TAB 3: ORDERS & BOLA CHECK -->
+      <section id="tab-orders" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Order History & BOLA Verification</h2>
+            <p class="section-desc">
+              Demonstrates <strong>OWASP Broken Object Level Authorization (BOLA/IDOR)</strong> defense (<code>GET /api/v1/orders/</code>).
+              Customers can only view their own orders. Admins can view all orders across all customers.
+            </p>
+          </div>
+          <button class="btn btn-secondary" onclick="loadOrders()">Refresh Orders</button>
+        </div>
+
+        <div id="orders-list-container" class="orders-container">
+          <!-- Populated via JS -->
+          <div class="loading-state">Loading order history...</div>
+        </div>
+      </section>
+
+      <!-- TAB 4: ADMIN INVENTORY MANAGEMENT -->
+      <section id="tab-admin" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Admin Product & Inventory Management</h2>
+            <p class="section-desc">Create catalog products via <code>POST /api/v1/products/</code> (Protected by Role-Based Access Control - <strong>Admin Only</strong>).</p>
+          </div>
+        </div>
+
+        <div id="admin-forbidden-notice" class="notice-box notice-warning" style="display: none;">
+          <h4>🔒 Admin Access Required</h4>
+          <p>You are currently authenticated as <strong><span id="notice-role-name">Customer</span></strong>. Attempting to add a product will return a <code>403 Forbidden</code> error. Switch to the <strong>Admin</strong> persona above to gain full access.</p>
+        </div>
+
+        <div class="admin-card">
+          <h3 class="panel-title">Add New Product to Catalog</h3>
+          <form id="admin-product-form" onsubmit="handleCreateProduct(event)">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="prod-name">Product Name *</label>
+                <input type="text" id="prod-name" class="input-field" required placeholder="e.g. 4K Ultra HD Monitor">
+              </div>
+              <div class="form-group">
+                <label for="prod-category">Category *</label>
+                <select id="prod-category" class="select-field" required>
+                  <option value="Electronics">Electronics</option>
+                  <option value="Audio">Audio</option>
+                  <option value="Accessories">Accessories</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="prod-price">Price ($ USD) *</label>
+                <input type="number" id="prod-price" class="input-field" step="0.01" min="0.01" required placeholder="199.99">
+              </div>
+              <div class="form-group">
+                <label for="prod-stock">Stock Quantity *</label>
+                <input type="number" id="prod-stock" class="input-field" min="0" required placeholder="30">
+              </div>
+              <div class="form-group full-width">
+                <label for="prod-desc">Description</label>
+                <textarea id="prod-desc" class="textarea-field" rows="3" placeholder="Brief technical specifications and details..."></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="btn-create-prod">Create Product</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- TAB 5: GRAPHQL STUDIO -->
+      <section id="tab-graphql" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Strawberry GraphQL Studio</h2>
+            <p class="section-desc">Execute type-safe GraphQL queries directly against <code>/graphql</code>. Demonstrates custom field selection and calculated fields.</p>
+          </div>
+        </div>
+
+        <div class="graphql-presets">
+          <span class="preset-label">Sample Queries:</span>
+          <button class="btn btn-xs" onclick="setGraphQLQuery('products')">Query Products (Field Selection)</button>
+          <button class="btn btn-xs" onclick="setGraphQLQuery('products_with_stock')">Products & Stock</button>
+          <button class="btn btn-xs" onclick="setGraphQLQuery('orders')">Query Orders & Subtotals</button>
+        </div>
+
+        <div class="graphql-workspace">
+          <div class="editor-pane">
+            <div class="pane-header">
+              <span>GraphQL Query Document</span>
+              <button class="btn btn-primary btn-sm" onclick="executeGraphQL()">▶ Run Query</button>
+            </div>
+            <textarea id="graphql-query-input" class="code-editor" rows="12"></textarea>
+          </div>
+
+          <div class="response-pane">
+            <div class="pane-header">
+              <span>JSON Response</span>
+              <span id="graphql-status-tag" class="status-tag">Ready</span>
+            </div>
+            <pre id="graphql-response-output" class="code-block json-viewer">Click "Run Query" to inspect results...</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: DOCS & TELEMETRY -->
+      <section id="tab-docs" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">API Documentation & Telemetry</h2>
+            <p class="section-desc">Direct interactive links to FastAPI OpenAPI documentation, specifications, and telemetry probes.</p>
+          </div>
+        </div>
+
+        <div class="docs-cards-grid">
+          <a href="/docs" target="_blank" class="doc-card">
+            <div class="doc-card-icon">📑</div>
+            <div class="doc-card-content">
+              <h4>Swagger UI Documentation</h4>
+              <p>Interactive OpenAPI 3.1 Swagger interface for running REST endpoints in the browser.</p>
+              <span class="doc-link-label">Open /docs &rarr;</span>
+            </div>
+          </a>
+
+          <a href="/redoc" target="_blank" class="doc-card">
+            <div class="doc-card-icon">📘</div>
+            <div class="doc-card-content">
+              <h4>ReDoc API Reference</h4>
+              <p>Clean, enterprise three-panel API schema documentation and request definitions.</p>
+              <span class="doc-link-label">Open /redoc &rarr;</span>
+            </div>
+          </a>
+
+          <a href="/graphql" target="_blank" class="doc-card">
+            <div class="doc-card-icon">⚡</div>
+            <div class="doc-card-content">
+              <h4>GraphQL IDE / Schema</h4>
+              <p>Full-page interactive Strawberry GraphQL IDE schema explorer.</p>
+              <span class="doc-link-label">Open /graphql &rarr;</span>
+            </div>
+          </a>
+
+          <a href="/openapi.json" target="_blank" class="doc-card">
+            <div class="doc-card-icon">⚙️</div>
+            <div class="doc-card-content">
+              <h4>Raw OpenAPI 3.1 JSON</h4>
+              <p>Standardized JSON schema used for automated client SDK generation.</p>
+              <span class="doc-link-label">Open /openapi.json &rarr;</span>
+            </div>
+          </a>
+        </div>
+
+        <div class="telemetry-card">
+          <h3 class="panel-title">System Health Probe (<code>GET /health</code>)</h3>
+          <pre id="telemetry-json" class="code-block">Fetching telemetry data...</pre>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Custom Auth Modal -->
+  <div id="auth-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">Custom Authentication</h3>
+        <button class="modal-close" onclick="closeAuthModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="auth-tab-login" onclick="toggleAuthMode('login')">Login</button>
+          <button class="auth-tab" id="auth-tab-register" onclick="toggleAuthMode('register')">Register New</button>
+        </div>
+
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+          <div id="auth-name-group" class="form-group" style="display: none;">
+            <label for="auth-name">Full Name</label>
+            <input type="text" id="auth-name" class="input-field" placeholder="John Doe">
+          </div>
+          <div class="form-group">
+            <label for="auth-email">Email Address *</label>
+            <input type="email" id="auth-email" class="input-field" required placeholder="user@example.com">
+          </div>
+          <div class="form-group">
+            <label for="auth-password">Password *</label>
+            <input type="password" id="auth-password" class="input-field" required placeholder="••••••••">
+          </div>
+          <div id="auth-role-group" class="form-group" style="display: none;">
+            <label for="auth-role">Role</label>
+            <select id="auth-role" class="select-field">
+              <option value="customer">Customer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeAuthModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btn-auth-submit">Login</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

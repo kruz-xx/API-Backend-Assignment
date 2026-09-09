@@ -10,7 +10,7 @@ from collections import deque
 import hashlib
 import json
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 from fastapi import FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
@@ -26,9 +26,9 @@ class SlidingWindowRateLimiter:
     def __init__(self, max_requests: int = 5, window_seconds: int = 60):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
-        self._clients: Dict[str, deque] = {}
+        self._clients: dict[str, deque] = {}
 
-    def is_allowed(self, client_key: str) -> Tuple[bool, int, int, int]:
+    def is_allowed(self, client_key: str) -> tuple[bool, int, int, int]:
         current_time = time.time()
         window_cutoff = current_time - self.window_seconds
 
@@ -161,7 +161,7 @@ ORDERS_TABLE = [
 
 class QueryTracker:
     def __init__(self):
-        self.queries: List[str] = []
+        self.queries: list[str] = []
 
     def execute_sql(self, query: str, data: Any = None) -> Any:
         self.queries.append(query)
@@ -169,7 +169,7 @@ class QueryTracker:
         return data
 
 
-def run_n_plus_one_benchmark() -> Dict[str, Any]:
+def run_n_plus_one_benchmark() -> dict[str, Any]:
     tracker = QueryTracker()
     results = {}
 

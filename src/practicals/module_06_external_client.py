@@ -12,7 +12,7 @@ Implements:
 import logging
 import os
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 from fastapi import FastAPI, Header, Response, status
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
@@ -26,7 +26,7 @@ logger = logging.getLogger("module_06_client")
 # ---------------------------------------------------------------------------
 upstream_app = FastAPI(title="Simulated External Upstream API")
 
-request_counters: Dict[str, int] = {
+request_counters: dict[str, int] = {
     "flaky_503": 0,
     "rate_limited_429": 0
 }
@@ -105,7 +105,7 @@ class ResilientExternalClient:
         max_retries: int = 3,
         base_delay: float = 0.5,
         sleep_fn: Callable[[float], None] = time.sleep
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Executes HTTP GET with exponential backoff:
         - Retries on 5xx server errors and network/timeout failures
@@ -151,8 +151,12 @@ class ResilientExternalClient:
 
             except Exception as exc:
                 last_exception = exc
-                if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500 and exc.response.status_code != 429:
-                    raise exc
+                # Check for HTTPStatusError from httpx/httpx2 or any response status < 500
+                resp = getattr(exc, "response", None)
+                if resp is not None and getattr(resp, "status_code", None) is not None:
+                    if resp.status_code < 500 and resp.status_code != 429:
+                        raise exc
+
 
         raise RuntimeError(f"Failed to execute request to '{path}' after {max_retries} attempts.") from last_exception
 
